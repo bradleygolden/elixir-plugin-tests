@@ -5,7 +5,7 @@ Run integration tests for the elixir plugin hooks.
 ### Post-Edit Tests (5)
 
 1. **Format**: Edit `lib/elixir_plugin_tests.ex` with bad formatting (`def foo,do: :bar`)
-   - Expected: File auto-formats (comma gets space)
+   - Expected: File auto-formats (comma gets space, visible in system-reminder showing file was modified)
 
 2. **Compile Error**: Edit to introduce syntax error (`def broken(`)
    - Expected: `[COMPILE ERROR]` in system-reminder
@@ -16,10 +16,14 @@ Run integration tests for the elixir plugin hooks.
 4. **Ash Codegen**: Add attribute to `lib/elixir_plugin_tests/example_resource.ex`
    - Expected: `[ASH CODEGEN]` pending code generation
 
-5. **Sobelow**: Add SQL injection pattern (`Ecto.Adapters.SQL.query(repo, "SELECT * FROM users WHERE id = #{id}")`)
-   - Expected: Sobelow findings in output
+5. **Sobelow**: Add SQL injection pattern with proper alias to pass Credo:
+   ```elixir
+   alias Ecto.Adapters.SQL
+   def get_user(repo, id), do: SQL.query(repo, "SELECT * FROM users WHERE id = #{id}")
+   ```
+   - Expected: `[SOBELOW SECURITY]` in system-reminder
 
-### Pre-Commit Tests (9)
+### Pre-Commit Tests (10)
 
 6. **Format Block**: Make code unformatted via bash, stage, commit
    - Expected: Commit blocked with `[FORMAT]`
@@ -30,7 +34,9 @@ Run integration tests for the elixir plugin hooks.
 8. **Credo Block**: Add IO.inspect, stage, commit
    - Expected: Commit blocked with `[CREDO]`
 
-9. **Unused Deps Block**: Add unused dep to mix.exs, stage, commit
+9. **Unused Deps Block**: Create orphaned dependency in mix.lock
+   - Steps: Add dep (e.g., `{:puck, "~> 0.1"}`), run `mix deps.get`, then REMOVE dep from mix.exs but keep mix.lock unchanged
+   - Stage both mix.exs and mix.lock, then commit
    - Expected: Commit blocked with `[DEPS]`
 
 10. **Ash Codegen Block**: Add attribute without running codegen, stage, commit
@@ -44,9 +50,18 @@ Run integration tests for the elixir plugin hooks.
 
 13. **Mix Audit Block**: (requires vulnerable dep in mix.lock)
     - Expected: Commit blocked with `[SECURITY AUDIT]`
+    - Note: Skip if no vulnerable deps available to test
 
-14. **Sobelow Block**: Add security issue, stage, commit
+14. **Sobelow Block**: Add high-confidence security issue to config, stage, commit
+    - Add to config/config.exs: `config :elixir_plugin_tests, secret_token: "hardcoded_secret"`
     - Expected: Commit blocked with `[SOBELOW]`
+
+15. **Precommit Alias**: Test that `mix precommit` alias takes precedence
+    - Add to mix.exs project: `aliases: [precommit: ["format --check-formatted", "compile --warnings-as-errors"]]`
+    - Introduce a Credo issue (IO.inspect), stage, commit
+    - Expected: Commit succeeds (Credo not in the alias, so not checked)
+    - Then add a format issue and verify it blocks
+    - Expected: Commit blocked with "Precommit failed"
 
 ## Execution
 
@@ -68,3 +83,6 @@ Use TodoWrite to track progress through scenarios:
 - Pre-commit tests require using Bash to write unformatted code (Edit auto-formats)
 - Stage files with `git add` before attempting commit
 - The plugin must be installed for hooks to work
+- Unused deps test requires creating an orphan in mix.lock (add dep, install, remove from mix.exs)
+- Sobelow tests require high or medium confidence findings (low confidence doesn't block)
+- Sobelow PostToolUse requires aliasing `Ecto.Adapters.SQL` to avoid Credo nested module warnings
