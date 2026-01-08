@@ -18,12 +18,23 @@ defmodule ElixirPluginTests.MixProject do
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:igniter, "~> 0.6", only: [:dev, :test]}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:igniter, "~> 0.6", only: [:dev, :test]},
+
+      # Ash Framework
+      {:ash, "~> 3.0"},
+      {:ash_postgres, "~> 2.0"},
+      {:simple_sat, "~> 0.1"},
+
+      # Code Quality
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+
+      # Security
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false}
     ]
   end
 end
